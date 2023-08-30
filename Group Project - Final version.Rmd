@@ -1,0 +1,571 @@
+---
+title: "DATA 606 Group project"
+output:
+  html_document: default
+  pdf_document: default
+date: "2023-06-10"
+---
+
+*Group Members*
+
+Jelilat ADEBAYO                              Victor OLATOPE   
+
+Olayinka MOGAJI                              Ritah NABAWEESI  
+
+**STOCK PRICE CLASSIFICATION: PREDICTING BUY, HOLD, OR SELL DECISIONS USING PRICE DATA FOR THE S&P 5OO Index**
+
+**INTRODUCTION**
+
+When an investor decides to participate in the stock market, they are usually being driven by the need to either grow their wealth or store the value of their wealth. To achieve the investment goal, the investor will have to monitor the performance of their investment portfolio, either passively or aggressively to maximize growth or limit losses. However, for a first-time investor, they might not have the relevant trading expertise to make the best decisions on when to buy, hold or sell the stock. 
+
+The decision to buy, hold or sell a given stock is influenced by several factors such as one’s risk tolerance (level of risk an investor is willing to take), investment time horizon (long-term, short-term, or medium-term) and financial goals. The process of deciding when to sell, hold or buy a particular stock is termed an investment strategy. This strategy would vary from one individual to another, and there are no one-size fits all. For example, "Common Stocks and Uncommon Profits" by Philip Fisher (1958) recommended identifying high-quality companies and emphasizes the importance of long-term investment horizons. Another literature, "The Little Book That Beats the Market" by Joel Greenblatt (2005) presents a simple and effective investment strategy called the "Magic Formula" that combines value and quality metrics to identify undervalued stocks. 
+
+One of the strategies widely adopted in the industry is the use of various technical indicators, either in isolation or in combination with other fundamental indicators. While using the technical indicators, the investor or investment advisor monitors the movements of the stock price in relation to the chosen technical indicators and the interaction of a combination of technical indicators. It is imperative that an investor makes an informed timely investment decision on their portfolio, in line with the set investment strategy and not act based on emotions.  
+
+**OBJECTIVE**
+
+Our goal is to build a classification model based on prevailing stock market prices and designed investment strategy that informs the investor on when to buy, hold or sell the S&P 500 Index. This will ultimately ease the investment decision for the investor and enable real time decision making. 
+
+**DATA SET**
+
+The data set with the daily stock prices for the S&P 500 Index, ticker symbol ^GSPC, was downloaded from Yahoo Finance through the use of the quantmod::getSymbols R package for the duration 01-01-2000 to 08-06-2023.
+
+The default data set is as below:
+
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+library(quantmod)
+
+```
+
+
+```{r, echo = TRUE}
+#Defining the stock symbol and data range
+
+stock_symbol <- "^GSPC" #S&P500 Index
+start_date <- "2000-01-01"
+end_date <- "2023-06-08"
+
+#download the stock data
+getSymbols(stock_symbol, from = start_date, to = end_date)
+
+#convert to dataframe
+
+stock = as.data.frame(GSPC)
+head(stock)
+
+```
+
+The variables in the data frame above are explained:
+
+•	GSPC.Open: the price at which the stock index begins to trade at that date. 
+
+•	GSPC.High: The highest price at which a stock index trades on a given day
+
+•	GSPC.Low: the lowest price at which a stock index trades during a given period
+
+•	GSPC.Close: the final price at which the stock index trades
+
+•	GSPC.Volume: the number of shares traded on that day
+
+•	GSPC.Adjusted: the stock price adjusted for dividends and splits and/or capital gain distributions.
+
+**METHODOLOGY**
+
+The success of the study is hinged on the right classification of the investment decision, to either buy, hold or sell the stock. In order to classify the information as either buy, hold or sell, we set out to design an investment strategy for this project on which to base the buy/sell signals.
+
+A buy signal as an event or condition selected by a trader or investor as an alert for entering a purchase order for an investment. It follows that the sell signal is an event or condition selected by a trader or investor as an alert for entering a sell order for an investment.
+
+The alert signals are defined to suit the investors risk profile and investment horizon. For this study, the alert signals were built on **four** key indicators;  relative strength index, Stochastics and the price of the stock relative to the 50-day and 200-day exponential moving average (EMA) and the Volume confirmation.
+
+The **relative strength index (RSI)** is a momentum indicator used in technical analysis. RSI measures the speed and magnitude of a security's recent price changes to evaluate overvalued or undervalued conditions in the price of that security (Source: https://www.investopedia.com/terms/r/rsi.asp). It compares the security's strength on days when prices go up to it's strength on days when prices go down.
+
+**Stochastics** measures the current price of a stock relative to it's price range over a specific period of time. It has two components: %K and %D. 
+- %K represents the current closing price of the stock relative to the highest and lowest prices over a defined period and it ranges from 0 to 100. 
+When %K is near 0, it suggests the stock is trading near the lower end of its price range, indicating an oversold condition.
+When %K is near 100, it suggests the stock is trading near the upper end of its price range, indicating an overbought condition.
+- %D is the smoothed version of %K and is often represented as moving average of %K.
+(Source: https://www.investopedia.com/terms/s/stochasticoscillator.asp)
+
+
+The commonly used thresholds by stock traders are  %K above 80 suggests overbought conditions, indicating a potential selling opportunity while %K below 20 suggests oversold conditions, indicating a potential buying opportunity. This approach was adopted as part of the investment strategy.
+
+In order to align with commonly used industry practice, the 50-day exponential moving average and 200-day moving average is adopted in deriving the trade signals for the study. The 50-day EMA is used to assess the short term patterns while the 200-day EMA is long term.
+The EMAs are used as support and resistance price levels. If the price is above the EMA, the EMA can serve as support level, i.e if the stock declines, the price might have a more difficult time falling below the EMA.Conversely, if the price is below the EMA, the EMA can serve as a strong resistance level in the sense that if the stock were to increase, the price might struggle to rise above the EMA.
+
+For the investment strategy adopted,if the price falls below the support level that is interpreted as a sell signal while if the stock rises above the resistance level, that is a buy signal. A comparison of the short term moving averages with the long term moving averages, when the short term moving average crosses above the long term moving average it indicates a potential uptrend triggering a buy signal.  
+
+The volume confirmation that was adopted as part of the Investment strategy was an increase in trading volume as the price rises indicates a stronger buying interest hence a buy signal should be triggered.
+
+```{r table1, tidy=FALSE, echo = FALSE}
+data2 <- read.table(stringsAsFactors = FALSE, header = TRUE, sep="/", text =
+'Signal/RSI/Stochastic:%K /Price EMA/Volume EMA
+Buy/""/""/ema50>=ema200/Vol > vol.ema200
+Sell/>70/>80/Close < ema50 or close < ema200/Vol < vol.ema200
+Hold/None of above satisfied/""/""/""'
+)
+knitr::kable((data2), booktabs = TRUE,
+caption = 'Summary of Investment strategy')
+```
+
+Once the investment strategy was defined, the classes/signals (buy, sell, hold) were assigned based on the investment strategy.
+
+
+```{r }
+#compute the technical indicators
+rsi <- RSI(Cl(GSPC))
+
+#compute the stochastics
+stochastics <- stoch(GSPC[, c("GSPC.High", "GSPC.Low", "GSPC.Close")])
+
+#compute moving average of volume
+mvolume = EMA(Vo(GSPC), n = 200)
+
+ma_50 <- EMA(Cl(GSPC), n = 50) #50-day moving average of the closing price
+ma_200 <- EMA(Cl(GSPC), n = 200) #200-day moving average moving average of the closing price
+
+```
+
+```{r, warning = FALSE}
+# Generate buy/sell signals based on the moving averages RSI and stochastics
+buy_signal.2 <- ifelse(ma_50 >= ma_200 | Vo(GSPC) > mvolume, "Buy", "")
+
+sell_signal.2 <- ifelse(rsi > 70 && stochastics$fastK > 80  | Cl(GSPC) < ma_50 | Cl(GSPC) < ma_200, "Sell" , "")
+hold_signal.2 <- ifelse(buy_signal.2 == "" & sell_signal.2 == "", "Hold", "")
+
+```
+
+```{r echo=FALSE}
+#Add the signals to the dataframe
+
+stock$Signals <- NA
+stock$Signals[!is.na(buy_signal.2)] <- "Buy"
+stock$Signals[!is.na(sell_signal.2)] <- "Sell"
+stock$Signals[is.na(stock$Signals)] <- "Hold"
+
+# View the dataframe
+head(stock,5)
+
+```
+To the default data set, a number of derived variables were added to the data set as these were critical in the prediction of the response varible, Signals.
+The derived variables include:
+
+- Lag returns : Lag 1, 10,15,50
+- Exponential moving averages of the daily returns: ema_10 and ema_50
+
+The choice of EMA is based on the fact that it is a weighted moving average which assigns more weight to the most recent market data.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+library(dplyr)
+
+#lagged returns
+stock <- stock %>% mutate(Lag1 = (GSPC.Close - lag(GSPC.Close, n = 1))/lag(GSPC.Close, n = 1)*100)
+stock <- stock %>% mutate(Lag10 = (GSPC.Close - lag(GSPC.Close, n = 10))/lag(GSPC.Close, n = 10)*100)
+stock <- stock %>% mutate(Lag15 = (GSPC.Close - lag(GSPC.Close, n = 15))/lag(GSPC.Close, n = 15)*100)
+stock <- stock %>% mutate(Lag50 = (GSPC.Close - lag(GSPC.Close, n = 50))/lag(GSPC.Close, n = 50)*100)
+#stock <- stock %>% mutate(Lag200 = (GSPC.Close - lag(GSPC.Close, n = 200))/lag(GSPC.Close, n = 200)*100)
+
+#compute the returns and exponential moving average of returns, based on the closing price of the stock. The time frames can be adjusted, it's not cast in stone.
+returns <- dailyReturn(Cl(GSPC))
+ema_50 <- EMA(returns, n = 50)
+ema_10 <- EMA(returns, n = 10)
+
+#Add the columns to the dataframe
+stock$ema_10 <- ema_10
+stock$ema_50 <- ema_50
+
+```
+
+The exploratory analysis of the variables was performed and the model building exercise followed.
+Based on the consolidated data set, the response variable is Signals while the predictors are Lag 1 through to 50 and ema_10 to ema_50.
+
+**EXPLORATORY ANALYSIS OF THE DATA SET**
+
+*Trend Analysis: S&P500 Daily prices with Exponential Moving Averages indicators*
+
+```{r echo = FALSE}
+#calculate the exponential moving averages
+
+ma_50 <- EMA(Cl(GSPC), n = 50) #50-day moving average
+ma_200 <- EMA(Cl(GSPC), n = 200) #200-day moving average
+
+# Plot the stock prices and moving averages
+chartSeries(GSPC, TA = "addEMA(n = 15, col = 'blue')",theme = "white")
+addEMA(n = 50, col = "red")
+# Add a title
+#title(main = "S&P 500 Daily prices with EMA Indicators")
+
+# Add legends
+legend("topleft", legend = c("EMA (15)", "EMA (50)"), col = c("blue", "red"), lty = 2)
+```
+
+
+Figures 1 and 2 show the S&P500 Daily prices with Exponential Moving Averages indicators. From the time series plot, the closing price of the S&P 500 Index has been on an upward trend from 2000 to June 08, 2023. In 2008, there was a drop in stock prices – an impact of the US economic crisis at the time. However, beyond this point, the stock price has risen from ~$1,000 to ~$4,000 in 2023. This suggest that an investor that bought shares between the 2008 – 2010 and held unto them would be 300% time richer in 2023.  
+
+Another step taken was to assess if there is any relationship between the daily returns on the shares and the volumes being traded. Figure 3 shows there is no relationship between the range of the returns and entire spread of the volume of shares.  
+
+The next step was to evaluate the relationship between the Signal classifications and the investment strategy parameters, i.e., Lag1 to 50 and ema50 and 200. 
+
+ 
+
+***Box plot analysis: Distributions of the Signals across the predictor variables***
+
+```{r warning=FALSE, message=FALSE}
+library(ggplot2)
+
+library(gridExtra)
+
+plot1 <- ggplot(stock, aes(x = Signals, y = GSPC.Close, fill = Signals)) +
+  geom_boxplot() +
+  theme_bw()
+
+plot2 <- ggplot(stock, aes(x = Signals, y = Lag1, fill = Signals)) +
+  geom_boxplot() +
+  theme_bw()
+
+plot3 <- ggplot(stock, aes(x = Signals, y = Lag10, fill = Signals)) +
+  geom_boxplot() +
+  theme_bw()
+
+plot4 <- ggplot(stock, aes(x = Signals, y = Lag15, fill = Signals)) +
+  geom_boxplot() +
+  theme_bw()
+
+plot5 <- ggplot(stock, aes(x = Signals, y = Lag50, fill = Signals)) +
+  geom_boxplot() +
+  theme_bw()
+
+plot6 <- ggplot(stock, aes(x = Signals, y = ema_10, fill = Signals)) +
+  geom_boxplot() +
+  theme_bw()
+
+plot7 <- ggplot(stock, aes(x = Signals, y = ema_50, fill = Signals)) +
+  geom_boxplot() +
+  theme_bw()
+
+# Arrange the plots as subplots
+grid.arrange(plot1, plot2, plot3, plot4, plot5, plot6, plot7, ncol = 3)
+
+#plot6
+#plot7
+
+```
+
+
+-Lag1: 
+
+The median between the groups is not significantly different 
+
+Hence may  aid the classification
+
+-Lag10: 
+
+The median between buy and hold group is not significantly, however relative to Sell, there is a step change.
+
+These would be relevant for classification
+
+-Lag15: same observation as Lag10
+
+-Lag50: same observation as Lag10
+
+-GPSC.Close: The median between the groups not significantly different. Hence may aid the classification.
+
+**MODEL BUILDING**
+
+In this section, with the Signals as the response variable, we focus on four models:
+-Linear Discriminant Analysis (LDA)
+-Quadratic Discriminant Analysis (QDA)
+-Classification Tree
+-Multinomial Logistic regression
+
+Using the stratified sampling method, the data set was split into 75% training and 25% test set.
+
+```{r}
+# Remove the NA values
+stock.1 <- na.omit(stock)
+
+#Checking order of the classes
+unique(stock.1$Signals)
+```
+```{r}
+#checking number of observations in each class
+table(stock.1$Signals)
+```
+
+Split the data set into 75% training and 25% as test set
+```{r message=FALSE}
+library(sampling)
+library(survey)
+set.seed(2023)
+
+idx=sampling:::strata(stock.1, stratanames=c("Signals"), size=c(1814,67,2503), method="srswor")
+train_data =stock.1[idx$ID_unit,] #specifies the rows to pick from the dataset
+test_data = stock.1[-idx$ID_unit,]
+```
+
+**Linear Discriminant Analysis (LDA)**
+
+The LDA model is hinged on two assumptions:
+-The multivariate normality
+-Equality of variances 
+
+We test first assumption of the model
+
+***The multivariate normality test***
+
+This energy test checks whether several variables are normally distributed as a group. The hypothesis at test is:
+
+Ho: The variables follow a multivariate normal distribution
+
+H1: The variables do not follow a multivariate normal distribution
+
+```{r warning=FALSE}
+library(energy)
+variables <- stock.1[, c("Lag1", "Lag10", "Lag15", "Lag50", "ema_10","ema_50")]
+mvnorm.etest(variables, R = 100)
+```
+Since the p-value < 2.2e-16 is less than 0.05, we reject the null hypothesis. There is sufficient evidence to support the alternative hypothesis that the variables do not follow a multivariate normal distribution.
+We however choose to keep the variables for the model.
+
+Training the model on the train data set
+```{r message=FALSE, warning=FALSE}
+library(MASS)
+lda_stock <- lda(Signals ~ Lag1 + Lag10 + Lag15 + Lag50 + ema_10 + ema_50, data = train_data)
+
+lda_stock
+```
+The prior probabilities for each group indicate that:
+
+Buy: suggests that approximately 57.1% of the observations in the data set or population are classified as "Buy" based on the available information.
+
+Hold: indicates that around 1.5% of the observations are categorized as "Hold" based on the given data.
+
+Sell: about 41.4% of the observations fall into the "Sell" category according to the available information.
+
+The model is fitted to the test data set and the confusion matrix is derived
+
+```{r}
+invest_pred <- predict(lda_stock, test_data)
+ldamatrix = table(invest_pred$class, test_data$Signals)
+ldamatrix
+```
+The LDA model doesn't return any prediction for the Hold class.
+From the confusion matrix, 200 of the 1,461 observations were wrongly classified.
+```{r}
+misclasslda = 1 - sum(diag(ldamatrix))/sum(ldamatrix)
+misclasslda
+```
+The misclassification rate is 0.137 implying 86.3% of the time the model will correctly predict the signals based on the chosen response variables of Lag 1 through to 50 and ema_10 - ema_50.
+
+
+**Quadratic Discriminant Analysis (QDA)**
+
+Using the same test and train data sets that were established earlier, we train the QDA model.
+```{r}
+qda.stock<-qda(Signals ~ Lag1 + Lag10 + Lag15 + Lag50 + ema_10 + ema_50, data = train_data)
+qda.stock
+```
+The interpretation of the prior probabilities is similar to that of the LDA model.
+The QDA model was fitted on the test data set and the confusion matrix derived
+
+```{r}
+qda.class<-predict(qda.stock, test_data)$class
+matrixqda = table(qda.class, test_data$Signals)
+matrixqda
+```
+Unlike the LDA model, the QDA manages to predict the Hold class unfortunately the prediction for this class is wrong.From the confusion matrix, 239 of the 1,461 observations were wrongly classified. As a result, the misclassification rate of the model is 16.36%.Hence the accuracy rate is 83.64% based on the test data.
+
+The accuracy rate of the QDA model is less than that of the LDA.
+
+```{r}
+#compute the misclassification
+misclassqda = 1 - sum(diag(matrixqda))/sum(matrixqda)
+misclassqda
+```
+**The Classification Tree**
+
+```{r message=FALSE, warning=FALSE}
+library(tree)
+tree.stock <- tree(factor(Signals) ~ Lag1 + Lag10 + Lag15 + Lag50 + ema_10 + ema_50, train_data)
+summary(tree.stock)
+```
+
+From the defined predictor variables, the classification tree is actually constructed from 3 variables: Lag50, Lag15 and ema_50.
+
+The classification tree has a misclassification error rate of 13.41%. Hence the accuracy rate is 86.59% based on the test data. This is the highest accuracy rate amongst the 3 models developed to this stage.
+
+The classification tree is plotted below:
+
+```{r echo = FALSE}
+plot(tree.stock)
+text(tree.stock, pretty=0, cex = 0.8)
+```
+
+The classification has 6 terminal nodes, of which the two terminal nodes from ema_50 < -0.0001522908 branch have the same predicted value of Buy. The split on this node leads to improved node purity.
+
+Based on our judgement, the 6 nodes of the tree are not complex hence the tree pruning is not performed at this point.
+
+```{r}
+stock.test <- predict(tree.stock, test_data, type="class")
+matrixtree = table(stock.test, test_data$Signals )
+matrixtree
+```
+```{r}
+#compute the misclassification
+misclasstree = 1 - sum(diag(matrixtree))/sum(matrixtree)
+misclasstree
+1-misclasstree
+```
+
+
+**Multinomial regression using logit model**
+
+```{r warning=FALSE, message=FALSE}
+library(VGAM)
+mlogit2=vglm(Signals ~ Lag1 + Lag10 + Lag15 + Lag50 + ema_10 + ema_50,family=multinomial,data=train_data)
+summary(mlogit2)
+```
+
+The reference group level 3 is the "Buy" group.
+Level 1 and Level 2 refer to the  two categories of the response variable, namely "Sell" and "Hold," respectively. The coefficients for Level 1 and Level 2 represent the differences in log-odds between those categories and the reference category (Buy).
+
+```{r}
+coef(mlogit2)
+```
+>A check of the goodness of fit for the model.
+
+The test of hypothesis is:
+
+Ho: The multinomial logistic model fits the data well 
+
+H1: The multinomial logistic model does not fit the data well
+
+```{r}
+1-pchisq(deviance(mlogit2),df.residual(mlogit2))
+```
+The output is 1, it means that the p-value is equal to 1, indicating that there is no evidence to reject the null hypothesis. In other words, the model fits the data well, and there is no significant lack of fit.
+
+The model has an accuracy rate of 85.93% based on the test data.
+
+```{r warning=FALSE, message=FALSE}
+library(Rfast)
+prob.fit<-fitted(mlogit2)
+fitted.result<-colnames(prob.fit)[rowMaxs(prob.fit)]
+misClasificError <- mean(fitted.result != train_data$Signals)
+print(paste('MAccuracy',1-misClasificError))
+```
+```{r}
+confusion_matrix <- table(fitted.result, train_data$Signals)
+print(confusion_matrix)
+
+```
+
+**CROSS VALIDATION OF THE MODELS**
+
+The four models that have been designed to this point have provided varying accuracy rates. In order to select the best model, we performed a cross validation of the models to assess the appropriateness of the methodology that we chose. The cross validation is performed on the entire data set to eliminate dependency on the partition that was created when we split the data into train and test parts.
+
+Using the k-fold cross validation approach, the k was set to 10-folds for each of the models.
+
+***Cross validation of the LDA model***
+
+```{r warning=FALSE, message=FALSE}
+#Cross validation for LDA
+set.seed(2023)
+library(caret)
+model_fit1<-train(Signals ~ Lag1 + Lag10 + Lag15 + Lag50 + ema_10 + ema_50, data = stock.1, trControl = trainControl(method = "cv", number=10), method='lda')
+model_fit1
+```
+The model accuracy rate is 85.80% based on the entire data set.
+
+***Cross validation of the QDA model***
+
+```{r}
+set.seed(2023)
+model_fit2<-train(Signals ~ Lag1 + Lag10 + Lag15 + Lag50 + ema_10 + ema_50, data = stock.1, trControl = trainControl(method = "cv", number=10), method='qda')
+model_fit2
+```
+The accuracy of the QDA model is 85.27% based on the entire data set.
+
+***Cross validation of the classification tree***
+
+```{r}
+library(rpart)
+
+set.seed(2023)
+
+
+folds <- createFolds(factor(stock.1$Signals), k=10) # stratified k-fold
+
+ 
+
+# assessing one of the fold of the stratified folds
+
+fold1<-stock.1[folds$Fold1,]
+
+table(fold1$Signals)
+
+ 
+
+misclass_class_tree <- function(idx){
+
+  train_class_tree <- stock[-idx,]
+
+  testclass_tree <- stock[idx,]
+
+
+  fit_class_tree <-rpart(Signals ~ Lag1 + Lag10 + Lag15 + Lag50 + ema_10 + ema_50, data = stock.1)
+
+  pred_class_tree <- predict(fit_class_tree,testclass_tree, type = "class")
+
+
+  return(1- mean(pred_class_tree == testclass_tree$Signals))
+
+}
+
+
+mis_rate_class_tree = lapply(folds, misclass_class_tree)
+
+1 - mean(as.numeric(mis_rate_class_tree))
+```
+The accuracy rate of the classification tree is 91.13% based on the entire data set.
+
+***Cross validation of the multinomial logistic model***
+
+```{r}
+set.seed(2023)
+model_fit3 <- train(Signals ~ Lag1 + Lag10 + Lag15 + Lag50 + ema_10 + ema_50, data = stock.1, trControl = trainControl(method = "cv", number=10), method='multinom')
+model_fit3
+```
+
+The logit model applied to the entire data set has an accuracy rate of 87.99%
+
+**CONCLUSION**
+
+Based on the adopted investment strategy and the set of predictors, the accuracy rates of the four models are summarized below: 
+
+```{r table2, tidy=FALSE, echo = FALSE}
+data3 <- read.table(stringsAsFactors = FALSE, header = TRUE, sep="/", text =
+'Model/Accuracy rate
+LDA/85.80%
+QDA/85.27%
+Classification tree/91.14%
+Multinomial logistic model/87.77%'
+)
+knitr::kable((data3), booktabs = TRUE,
+caption = 'Summary of model accuracy rates')
+```
+
+The classification tree with the highest accuracy rate of 91.14% offers a better prediction of the buy, hold and sell decisions of the S&P500 Index based on the adopted investment strategy.
+
+**References**
+
+1. Buy, Sell, and Hold Decisions: What to Consider - Ticker Tape. (n.d.). The Ticker Tape. https://tickertape.tdameritrade.com/investing/buy-sell-hold-strategies-new-investors-17466#:~:text=Technical%20analysis%20is%20often%20used,%2C%20sell%2C%20and%20hold%20decisions 
+
+2. Relative Strength Index (RSI) Indicator Explained With Formula. (2023, March 31). Investopedia. https://www.investopedia.com/terms/r/rsi.asp 
+
+3. Stochastic Oscillator: What It Is, How It Works, How To Calculate. (2021, June 25). Investopedia. https://www.investopedia.com/terms/s/stochasticoscillator.asp 
+
+4. Philip Fisher (1958): Common Stocks and Uncommon Profits  
+
+5. Joel Greenblatt (2005): The Little Book That Beats the Market 
+
